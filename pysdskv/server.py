@@ -5,7 +5,7 @@ import pymargo
 
 class SDSKVProvider(pymargo.Provider):
 
-	def __init__(self, mid, mplex_id):
-		super(SDSKVProvider, self).__init__(mid, mplex_id)
-		self._provider = _pysdskvserver.register(mid._mid, mplex_id)
+	def __init__(self, mid, provider_id):
+		super(SDSKVProvider, self).__init__(mid, provider_id)
+		self._provider = _pysdskvserver.register(mid._mid, provider_id)
 

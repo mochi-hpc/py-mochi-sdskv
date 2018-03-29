@@ -35,10 +35,10 @@ static sdskv_client_t pysdskv_client_init(margo_instance_id mid) {
 static sdskv_provider_handle_t pysdskv_provider_handle_create(
         sdskv_client_t client,
         hg_addr_t addr,
-        uint8_t mplex_id) {
+        uint8_t provider_id) {
 
     sdskv_provider_handle_t providerHandle = SDSKV_PROVIDER_HANDLE_NULL;
-    sdskv_provider_handle_create(client, addr, mplex_id, &providerHandle);
+    sdskv_provider_handle_create(client, addr, provider_id, &providerHandle);
     return providerHandle;
 }
 

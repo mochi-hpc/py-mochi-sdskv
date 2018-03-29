@@ -24,9 +24,9 @@ BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(sdskv_server_context_t)
 
 namespace bpl = boost::python;
 
-static sdskv_provider_t pysdskv_provider_register(margo_instance_id mid, uint8_t mplex_id) {
+static sdskv_provider_t pysdskv_provider_register(margo_instance_id mid, uint8_t provider_id) {
     sdskv_provider_t provider;
-    int ret = sdskv_provider_register(mid, mplex_id, SDSKV_ABT_POOL_DEFAULT, &provider);
+    int ret = sdskv_provider_register(mid, provider_id, SDSKV_ABT_POOL_DEFAULT, &provider);
     if(ret != 0) return NULL;
     else return provider;
 }
