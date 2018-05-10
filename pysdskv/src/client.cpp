@@ -42,6 +42,61 @@ static sdskv_provider_handle_t pysdskv_provider_handle_create(
     return providerHandle;
 }
 
+static sdskv_database_id_t pysdskv_open(
+        sdskv_provider_handle_t ph,
+        const std::string& db_name)
+{
+    sdskv_database_id_t id;
+    int ret = sdskv_open(ph, db_name.c_str(), &id);
+    if(ret != SDSKV_SUCCESS) return SDSKV_DATABASE_ID_INVALID;
+    return id;
+}
+
+static bpl::object pysdskv_get(
+        sdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& key) 
+{
+    hg_size_t vsize;
+    int ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
+    if(ret != SDSKV_SUCCESS) {
+        return bpl::object();
+    }
+    std::string value(vsize+1, '\0');
+    ret = sdskv_get(ph, id, key.c_str(), key.size(), (void*)value.data(), &vsize);
+    if(ret != SDSKV_SUCCESS) return bpl::object();
+    return bpl::object(value);
+}
+
+static bpl::object pysdskv_put(
+        sdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& key,
+        const std::string& value) 
+{
+    int ret = sdskv_put(ph, id, key.data(), key.size(), value.data(), value.size());
+    if(ret != SDSKV_SUCCESS) return bpl::object(false);
+    else return bpl::object(true);
+}
+
+static bpl::object pysdskv_exists(
+        sdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& key)
+{
+    hg_size_t len;
+    int ret = sdskv_length(ph, id, key.data(), key.size(), &len);
+    if(ret != SDSKV_SUCCESS) return bpl::object(false);
+    else return bpl::object(true);
+}
+
+static void pysdskv_erase(
+        sdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& key) {
+    sdskv_erase(ph, id, key.data(), key.size());
+}
+
 BOOST_PYTHON_MODULE(_pysdskvclient)
 {
 #define ret_policy_opaque bpl::return_value_policy<bpl::return_opaque_pointer>()
@@ -53,6 +108,11 @@ BOOST_PYTHON_MODULE(_pysdskvclient)
     bpl::def("provider_handle_create", &pysdskv_provider_handle_create, ret_policy_opaque);
     bpl::def("provider_handle_ref_incr", &sdskv_provider_handle_ref_incr);
     bpl::def("provider_handle_release", &sdskv_provider_handle_release);
+    bpl::def("open", &pysdskv_open);
+    bpl::def("get", &pysdskv_get);
+    bpl::def("put", &pysdskv_put);
+    bpl::def("exists", &pysdskv_exists);
+    bpl::def("erase", &pysdskv_erase);
     bpl::def("shutdown_service", &sdskv_shutdown_service);
 
 #undef ret_policy_opaque
