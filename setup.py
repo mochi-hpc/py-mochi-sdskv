@@ -11,17 +11,35 @@ os.environ['OPT'] = " ".join(
 		    flag for flag in opt.split() if flag != '-Wstrict-prototypes'
 		)
 
-server_libs = ['boost_python','margo']
-server_libs += pkgconfig.parse('sdskv-server')['libraries']
+python_version = str(sys.version_info[0])+str(sys.version_info[1])
+
+pk = pkgconfig.parse('sdskv-server')
+server_libraries = pk['libraries']
+server_libraries.append('boost_python'+python_version)
+server_library_dirs = pk['library_dirs']
+server_library_dirs = pk['library_dirs']
+server_include_dirs = pk['include_dirs']
+server_include_dirs.append(".")
+
 pysdskv_server_module = Extension('_pysdskvserver', ["pysdskv/src/server.cpp"],
-		           libraries=server_libs,
-			   include_dirs=['.'],
-			   depends=[])
+		           libraries=server_libraries,
+                   library_dirs=server_library_dirs,
+                   include_dirs=server_include_dirs,
+                   depends=["pysdskv/src/server.cpp"])
+
+pk = pkgconfig.parse('sdskv-client')
+client_libraries = pk['libraries']
+client_libraries.append('boost_python'+python_version)
+client_library_dirs = pk['library_dirs']
+client_library_dirs = pk['library_dirs']
+client_include_dirs = pk['include_dirs']
+client_include_dirs.append(".")
 
 pysdskv_client_module = Extension('_pysdskvclient', ["pysdskv/src/client.cpp"],
-		           libraries=['boost_python','margo','sdskv-client'],
-			   include_dirs=['.'],
-			   depends=[])
+		           libraries=client_libraries,
+                   library_dirs=client_library_dirs,
+                   include_dirs=client_include_dirs,
+                   depends=["pysdskv/src/client.cpp"])
 setup(name='pysdskv',
       version='0.1',
       author='Matthieu Dorier',
