@@ -62,7 +62,7 @@ static bpl::object pysdskv_get(
     if(ret != SDSKV_SUCCESS) {
         return bpl::object();
     }
-    std::string value(vsize+1, '\0');
+    std::string value(vsize, '\0');
     ret = sdskv_get(ph, id, key.c_str(), key.size(), (void*)value.data(), &vsize);
     if(ret != SDSKV_SUCCESS) return bpl::object();
     return bpl::object(value);
