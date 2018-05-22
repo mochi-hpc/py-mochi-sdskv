@@ -47,7 +47,10 @@ static sdskv_database_id_t pysdskv_open(
         const std::string& db_name)
 {
     sdskv_database_id_t id;
-    int ret = sdskv_open(ph, db_name.c_str(), &id);
+    int ret;
+    Py_BEGIN_ALLOW_THREADS 
+    ret = sdskv_open(ph, db_name.c_str(), &id);
+    Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return SDSKV_DATABASE_ID_INVALID;
     return id;
 }
@@ -58,12 +61,17 @@ static bpl::object pysdskv_get(
         const std::string& key) 
 {
     hg_size_t vsize;
-    int ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
+    Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) {
         return bpl::object();
     }
     std::string value(vsize, '\0');
+    Py_BEGIN_ALLOW_THREADS
     ret = sdskv_get(ph, id, key.c_str(), key.size(), (void*)value.data(), &vsize);
+    Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return bpl::object();
     return bpl::object(value);
 }
@@ -74,7 +82,10 @@ static bpl::object pysdskv_put(
         const std::string& key,
         const std::string& value) 
 {
-    int ret = sdskv_put(ph, id, key.data(), key.size(), value.data(), value.size());
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_put(ph, id, key.data(), key.size(), value.data(), value.size());
+    Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return bpl::object(false);
     else return bpl::object(true);
 }
@@ -85,7 +96,10 @@ static bpl::object pysdskv_exists(
         const std::string& key)
 {
     hg_size_t len;
-    int ret = sdskv_length(ph, id, key.data(), key.size(), &len);
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_length(ph, id, key.data(), key.size(), &len);
+    Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return bpl::object(false);
     else return bpl::object(true);
 }
@@ -94,7 +108,9 @@ static void pysdskv_erase(
         sdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key) {
+    Py_BEGIN_ALLOW_THREADS
     sdskv_erase(ph, id, key.data(), key.size());
+    Py_END_ALLOW_THREADS
 }
 
 BOOST_PYTHON_MODULE(_pysdskvclient)
