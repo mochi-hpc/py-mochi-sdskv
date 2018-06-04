@@ -8,7 +8,7 @@ mid = MargoInstance('tcp')
 mid.enable_remote_shutdown()
 
 mplex_id = 42
-print "Server running at address "+str(mid.addr())+"with mplex_id="+str(mplex_id)
+print "Server running at address "+str(mid.addr())+" with mplex_id="+str(mplex_id)
 
 provider = SDSKVProvider(mid, mplex_id)
 dbid = provider.add_database("mydatabase", "/tmp/sdskv", pysdskv.server.stdmap)

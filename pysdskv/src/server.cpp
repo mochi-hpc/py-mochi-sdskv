@@ -3,14 +3,7 @@
  * 
  * See COPYRIGHT in top-level directory.
  */
-#define BOOST_NO_AUTO_PTR
-#include <boost/python.hpp>
-#include <boost/python/return_opaque_pointer.hpp>
-#include <boost/python/handle.hpp>
-#include <boost/python/enum.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/module.hpp>
-#include <boost/python/return_value_policy.hpp>
+#include <pybind11/pybind11.h>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -19,20 +12,25 @@
 #include <sdskv-common.h>
 #include <sdskv-server.h>
 
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(margo_instance)
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(sdskv_server_context_t)
+namespace py11 = pybind11;
 
-namespace bpl = boost::python;
+typedef py11::capsule pymargo_instance_id;
+typedef py11::capsule pyhg_addr_t;
+typedef py11::capsule pysdskv_provider_t;
 
-static sdskv_provider_t pysdskv_provider_register(margo_instance_id mid, uint8_t provider_id) {
+#define MID2CAPSULE(__mid)    py11::capsule((void*)(__mid),  "margo_instance_id", nullptr)
+#define ADDR2CAPSULE(__addr)  py11::capsule((void*)(__addr), "hg_addr_t", nullptr)
+#define SDSKVPR2CAPSULE(__pr) py11::capsule((void*)(__pr),   "pysdskv_provider_t", nullptr)
+
+static pysdskv_provider_t pysdskv_provider_register(pymargo_instance_id mid, uint8_t provider_id) {
     sdskv_provider_t provider;
     int ret = sdskv_provider_register(mid, provider_id, SDSKV_ABT_POOL_DEFAULT, &provider);
-    if(ret != 0) return NULL;
-    else return provider;
+    if(ret != 0) return py11::none();
+    else return SDSKVPR2CAPSULE(provider);
 }
 
 static sdskv_database_id_t pysdskv_provider_add_database(
-        sdskv_provider_t provider,
+        pysdskv_provider_t provider,
         const std::string& name,
         const std::string& path,
         sdskv_db_type_t type) {
@@ -43,15 +41,15 @@ static sdskv_database_id_t pysdskv_provider_add_database(
     else return id;
 }
 
-static bpl::object pysdskv_provider_list_databases(sdskv_provider_t provider) {
-    bpl::list result;
+static py11::object pysdskv_provider_list_databases(pysdskv_provider_t provider) {
+    py11::list result;
     uint64_t num_db;
     if(SDSKV_SUCCESS != sdskv_provider_count_databases(provider, &num_db)) {
-        return bpl::object();
+        return py11::none();
     }
     std::vector<sdskv_database_id_t> dbs(num_db);
     if(SDSKV_SUCCESS != sdskv_provider_list_databases(provider, dbs.data())) {
-        return bpl::object();
+        return py11::none();
     }
     for(auto id : dbs) {
         result.append(id);
@@ -59,21 +57,19 @@ static bpl::object pysdskv_provider_list_databases(sdskv_provider_t provider) {
     return result;
 }
 
-BOOST_PYTHON_MODULE(_pysdskvserver)
+PYBIND11_MODULE(_pysdskvserver, m)
 {
-#define ret_policy_opaque bpl::return_value_policy<bpl::return_opaque_pointer>()
-
-    bpl::opaque<sdskv_server_context_t>();
-    bpl::enum_<sdskv_db_type_t>("database_type")
+    py11::enum_<sdskv_db_type_t>(m,"database_type")
         .value("map", KVDB_MAP)
         .value("bwtree", KVDB_BWTREE)
         .value("leveldb", KVDB_LEVELDB)
         .value("berkeleydb", KVDB_BERKELEYDB)
     ;
-    bpl::def("register", &pysdskv_provider_register, ret_policy_opaque);
-    bpl::def("add_database", &pysdskv_provider_add_database);
-    bpl::def("remove_database", &sdskv_provider_remove_database);
-    bpl::def("remove_all_databases", &sdskv_provider_remove_all_databases);
-    bpl::def("databases", &pysdskv_provider_list_databases);
-#undef ret_policy_opaque
+    m.def("register", &pysdskv_provider_register);
+    m.def("add_database", &pysdskv_provider_add_database);
+    m.def("remove_database", [](pysdskv_provider_t pr, sdskv_database_id_t db_id) {
+            return sdskv_provider_remove_database(pr, db_id); });
+    m.def("remove_all_databases", [](pysdskv_provider_t pr) {
+            return sdskv_provider_remove_all_databases(pr); });
+    m.def("databases", &pysdskv_provider_list_databases);
 }

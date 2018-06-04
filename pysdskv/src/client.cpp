@@ -3,14 +3,7 @@
  * 
  * See COPYRIGHT in top-level directory.
  */
-#define BOOST_NO_AUTO_PTR
-#include <boost/python.hpp>
-#include <boost/python/return_opaque_pointer.hpp>
-#include <boost/python/handle.hpp>
-#include <boost/python/enum.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/module.hpp>
-#include <boost/python/return_value_policy.hpp>
+#include <pybind11/pybind11.h>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -19,31 +12,36 @@
 #include <sdskv-common.h>
 #include <sdskv-client.h>
 
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(margo_instance)
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(sdskv_provider_handle)
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(sdskv_client)
-BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(hg_addr)
+namespace py11 = pybind11;
 
-namespace bpl = boost::python;
+typedef py11::capsule pymargo_instance_id;
+typedef py11::capsule pyhg_addr_t;
+typedef py11::capsule pysdskv_provider_handle_t;
+typedef py11::capsule pysdskv_client_t;
 
-static sdskv_client_t pysdskv_client_init(margo_instance_id mid) {
+#define MID2CAPSULE(__mid)    py11::capsule((void*)(__mid),  "margo_instance_id", nullptr)
+#define ADDR2CAPSULE(__addr)  py11::capsule((void*)(__addr), "hg_addr_t", nullptr)
+#define SDSKVPH2CAPSULE(__ph) py11::capsule((void*)(__ph),   "sdskv_provider_handle_t", nullptr)
+#define SDSKVCL2CAPSULE(__cl) py11::capsule((void*)(__cl),   "sdskv_client_t", nullptr)
+
+static pysdskv_client_t pysdskv_client_init(pymargo_instance_id mid) {
     sdskv_client_t result = SDSKV_CLIENT_NULL;
     sdskv_client_init(mid, &result);
-    return result;
+    return SDSKVCL2CAPSULE(result);
 }
 
-static sdskv_provider_handle_t pysdskv_provider_handle_create(
-        sdskv_client_t client,
-        hg_addr_t addr,
+static pysdskv_provider_handle_t pysdskv_provider_handle_create(
+        pysdskv_client_t client,
+        pyhg_addr_t addr,
         uint8_t provider_id) {
 
     sdskv_provider_handle_t providerHandle = SDSKV_PROVIDER_HANDLE_NULL;
     sdskv_provider_handle_create(client, addr, provider_id, &providerHandle);
-    return providerHandle;
+    return SDSKVPH2CAPSULE(providerHandle);
 }
 
 static sdskv_database_id_t pysdskv_open(
-        sdskv_provider_handle_t ph,
+        pysdskv_provider_handle_t ph,
         const std::string& db_name)
 {
     sdskv_database_id_t id;
@@ -55,8 +53,8 @@ static sdskv_database_id_t pysdskv_open(
     return id;
 }
 
-static bpl::object pysdskv_get(
-        sdskv_provider_handle_t ph,
+static py11::object pysdskv_get(
+        pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key) 
 {
@@ -66,18 +64,18 @@ static bpl::object pysdskv_get(
     ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
     Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) {
-        return bpl::object();
+        return py11::none();
     }
     std::string value(vsize, '\0');
     Py_BEGIN_ALLOW_THREADS
     ret = sdskv_get(ph, id, key.c_str(), key.size(), (void*)value.data(), &vsize);
     Py_END_ALLOW_THREADS
-    if(ret != SDSKV_SUCCESS) return bpl::object();
-    return bpl::object(value);
+    if(ret != SDSKV_SUCCESS) return py11::none();
+    return py11::cast(value);
 }
 
-static bpl::object pysdskv_put(
-        sdskv_provider_handle_t ph,
+static py11::object pysdskv_put(
+        pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key,
         const std::string& value) 
@@ -86,12 +84,12 @@ static bpl::object pysdskv_put(
     Py_BEGIN_ALLOW_THREADS
     ret = sdskv_put(ph, id, key.data(), key.size(), value.data(), value.size());
     Py_END_ALLOW_THREADS
-    if(ret != SDSKV_SUCCESS) return bpl::object(false);
-    else return bpl::object(true);
+    if(ret != SDSKV_SUCCESS) return py11::cast(false);
+    else return py11::cast(true);
 }
 
-static bpl::object pysdskv_exists(
-        sdskv_provider_handle_t ph,
+static py11::object pysdskv_exists(
+        pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key)
 {
@@ -100,12 +98,12 @@ static bpl::object pysdskv_exists(
     Py_BEGIN_ALLOW_THREADS
     ret = sdskv_length(ph, id, key.data(), key.size(), &len);
     Py_END_ALLOW_THREADS
-    if(ret != SDSKV_SUCCESS) return bpl::object(false);
-    else return bpl::object(true);
+    if(ret != SDSKV_SUCCESS) return py11::cast(false);
+    else return py11::cast(true);
 }
 
 static void pysdskv_erase(
-        sdskv_provider_handle_t ph,
+        pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key) {
     Py_BEGIN_ALLOW_THREADS
@@ -113,23 +111,21 @@ static void pysdskv_erase(
     Py_END_ALLOW_THREADS
 }
 
-BOOST_PYTHON_MODULE(_pysdskvclient)
+PYBIND11_MODULE(_pysdskvclient, m)
 {
-#define ret_policy_opaque bpl::return_value_policy<bpl::return_opaque_pointer>()
-
-    bpl::opaque<sdskv_client>();
-    bpl::opaque<sdskv_provider_handle>();
-    bpl::def("client_init", &pysdskv_client_init, ret_policy_opaque);
-    bpl::def("client_finalize", &sdskv_client_finalize);
-    bpl::def("provider_handle_create", &pysdskv_provider_handle_create, ret_policy_opaque);
-    bpl::def("provider_handle_ref_incr", &sdskv_provider_handle_ref_incr);
-    bpl::def("provider_handle_release", &sdskv_provider_handle_release);
-    bpl::def("open", &pysdskv_open);
-    bpl::def("get", &pysdskv_get);
-    bpl::def("put", &pysdskv_put);
-    bpl::def("exists", &pysdskv_exists);
-    bpl::def("erase", &pysdskv_erase);
-    bpl::def("shutdown_service", &sdskv_shutdown_service);
-
-#undef ret_policy_opaque
+    m.def("client_init", &pysdskv_client_init);
+    m.def("client_finalize", [](pysdskv_client_t clt) {
+            return sdskv_client_finalize(clt); });
+    m.def("provider_handle_create", &pysdskv_provider_handle_create);
+    m.def("provider_handle_ref_incr", [](pysdskv_provider_handle_t ph) {
+            return sdskv_provider_handle_ref_incr(ph); });
+    m.def("provider_handle_release", [](pysdskv_provider_handle_t ph) {
+            return sdskv_provider_handle_release(ph); });
+    m.def("open", &pysdskv_open);
+    m.def("get", &pysdskv_get);
+    m.def("put", &pysdskv_put);
+    m.def("exists", &pysdskv_exists);
+    m.def("erase", &pysdskv_erase);
+    m.def("shutdown_service", [](pysdskv_client_t clt, pyhg_addr_t addr) {
+            return sdskv_shutdown_service(clt, addr); });
 }
