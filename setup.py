@@ -11,11 +11,8 @@ os.environ['OPT'] = " ".join(
 		    flag for flag in opt.split() if flag != '-Wstrict-prototypes'
 		)
 
-python_version = str(sys.version_info[0])+str(sys.version_info[1])
-
 pk = pkgconfig.parse('sdskv-server')
 server_libraries = pk['libraries']
-server_libraries.append('boost_python'+python_version)
 server_library_dirs = pk['library_dirs']
 server_library_dirs = pk['library_dirs']
 server_include_dirs = pk['include_dirs']
@@ -29,7 +26,6 @@ pysdskv_server_module = Extension('_pysdskvserver', ["pysdskv/src/server.cpp"],
 
 pk = pkgconfig.parse('sdskv-client')
 client_libraries = pk['libraries']
-client_libraries.append('boost_python'+python_version)
 client_library_dirs = pk['library_dirs']
 client_library_dirs = pk['library_dirs']
 client_include_dirs = pk['include_dirs']
