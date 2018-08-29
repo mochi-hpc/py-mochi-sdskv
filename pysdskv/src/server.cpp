@@ -29,14 +29,20 @@ static pysdskv_provider_t pysdskv_provider_register(pymargo_instance_id mid, uin
     else return SDSKVPR2CAPSULE(provider);
 }
 
-static sdskv_database_id_t pysdskv_provider_add_database(
+static sdskv_database_id_t pysdskv_provider_attach_database(
         pysdskv_provider_t provider,
         const std::string& name,
         const std::string& path,
         sdskv_db_type_t type) {
     sdskv_database_id_t id;
-    int ret = sdskv_provider_add_database(
-                provider, name.c_str(), path.c_str(), type, NULL, &id);
+    sdskv_config_t config;
+    config.db_name = name.c_str();
+    config.db_path = path.c_str();
+    config.db_type = type;
+    config.db_comp_fn_name = NULL;
+    config.db_no_overwrite = 0;
+    int ret = sdskv_provider_attach_database(
+                provider, &config, &id);
     if(ret != 0) return SDSKV_DATABASE_ID_INVALID;
     else return id;
 }
@@ -66,7 +72,7 @@ PYBIND11_MODULE(_pysdskvserver, m)
         .value("berkeleydb", KVDB_BERKELEYDB)
     ;
     m.def("register", &pysdskv_provider_register);
-    m.def("add_database", &pysdskv_provider_add_database);
+    m.def("attach_database", &pysdskv_provider_attach_database);
     m.def("remove_database", [](pysdskv_provider_t pr, sdskv_database_id_t db_id) {
             return sdskv_provider_remove_database(pr, db_id); });
     m.def("remove_all_databases", [](pysdskv_provider_t pr) {

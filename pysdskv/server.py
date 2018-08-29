@@ -14,8 +14,8 @@ class SDSKVProvider(pymargo.Provider):
 		super(SDSKVProvider, self).__init__(mid, provider_id)
 		self._provider = _pysdskvserver.register(mid._mid, provider_id)
 
-	def add_database(self, name, path, db_type):
-		return _pysdskvserver.add_database(self._provider, name, path, db_type)
+	def attach_database(self, name, path, db_type):
+		return _pysdskvserver.attach_database(self._provider, name, path, db_type)
 
 	def remove_database(self, db_id):
 		_pysdskvserver.remove_database(self._provider, db_id)
