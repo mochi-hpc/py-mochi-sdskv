@@ -111,6 +111,24 @@ static void pysdskv_erase(
     Py_END_ALLOW_THREADS
 }
 
+static int pysdskv_migrate_database(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t source_id,
+        const std::string& dest_addr,
+        uint16_t dest_provider_id,
+        const std::string& dest_root,
+        bool remove_origin) {
+
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_migrate_database(
+            ph, source_id, dest_addr.c_str(),
+            dest_provider_id, dest_root.c_str(),
+            remove_origin ? SDSKV_REMOVE_ORIGINAL : SDSKV_KEEP_ORIGINAL);
+    Py_END_ALLOW_THREADS
+    return ret;
+}
+
 PYBIND11_MODULE(_pysdskvclient, m)
 {
     m.def("client_init", &pysdskv_client_init);
@@ -126,6 +144,7 @@ PYBIND11_MODULE(_pysdskvclient, m)
     m.def("put", &pysdskv_put);
     m.def("exists", &pysdskv_exists);
     m.def("erase", &pysdskv_erase);
+    m.def("migrate_database", &pysdskv_migrate_database);
     m.def("shutdown_service", [](pysdskv_client_t clt, pyhg_addr_t addr) {
             return sdskv_shutdown_service(clt, addr); });
 }

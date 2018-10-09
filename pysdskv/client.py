@@ -55,3 +55,6 @@ class SDSKVDatabase():
 
     def erase(self, key):
         return _pysdskvclient.erase(self._ph._ph, self._db, key)
+
+    def migrate(self, dest_addr, dest_provider_id, dest_root, remove_source=False):
+        return _pysdskvclient.migrate_database(self._ph._ph, self._db, dest_addr, dest_provider_id, dest_root, remove_source)
