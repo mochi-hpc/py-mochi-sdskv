@@ -46,7 +46,7 @@ pysdskv_client_module = Extension('_pysdskvclient', ["pysdskv/src/client.cpp"],
                    extra_compile_args=['-std=c++11'],
                    depends=["pysdskv/src/client.cpp"])
 setup(name='pysdskv',
-      version='0.2.1',
+      version='0.1.1',
       author='Matthieu Dorier',
       description="""Python binding for SDSKV""",      
       ext_modules=[ pysdskv_server_module, pysdskv_client_module ],
