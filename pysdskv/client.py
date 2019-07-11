@@ -45,13 +45,20 @@ class SDSKVDatabase():
         _pysdskvclient.put(self._sdskv_ph._ph, self._db_id, key, value)
 
     def get(self, key):
-        return _pysdskvclient.get(self._sdskv_ph._ph, self._db_id, key)
+        val = _pysdskvclient.get(self._sdskv_ph._ph, self._db_id, key)
+        if(val is None):
+            raise KeyError(key)
+        else:
+            return val
 
     def exists(self, key):
         return _pysdskvclient.exists(self._sdskv_ph._ph, self._db_id, key)
 
     def erase(self, key):
-        return _pysdskvclient.erase(self._sdskv_ph._ph, self._db_id, key)
+        _pysdskvclient.erase(self._sdskv_ph._ph, self._db_id, key)
 
     def migrate(self, dest_addr_str, dest_provider_id, dest_root, remove_source=False):
         return _pysdskvclient.migrate_database(self._sdskv_ph._ph, self._db, dest_addr, dest_provider_id, dest_root, remove_source)
+
+    def get_id(self):
+        return self._db_id

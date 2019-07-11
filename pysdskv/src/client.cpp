@@ -4,6 +4,7 @@
  * See COPYRIGHT in top-level directory.
  */
 #include <pybind11/pybind11.h>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -106,9 +107,14 @@ static void pysdskv_erase(
         pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
         const std::string& key) {
+    int ret;
     Py_BEGIN_ALLOW_THREADS
-    sdskv_erase(ph, id, key.data(), key.size());
+    ret = sdskv_erase(ph, id, key.data(), key.size());
     Py_END_ALLOW_THREADS
+    if(ret == 0) return;
+    std::stringstream ss;
+    ss << "sdskv_erase returned " << ret;
+    throw std::runtime_error(ss.str().c_str());
 }
 
 static int pysdskv_migrate_database(
