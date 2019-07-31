@@ -52,12 +52,43 @@ class TestClient(unittest.TestCase):
         db.put("test_exists_key", "test_exists_value")
         self.assertTrue(db.exists("test_exists_key"))
 
+    def test_length(self):
+        db = TestClient._ph.open("mydatabase")
+        db.put("test_length_key", "test_length_value")
+        self.assertEqual(len("test_length_value"), db.length("test_length_key"))
+
     def test_erase(self):
         db = TestClient._ph.open("mydatabase")
         db.put("test_erase_key", "test_erase_value")
         self.assertTrue(db.exists("test_erase_key"))
         db.erase("test_erase_key")
         self.assertFalse(db.exists("test_erase_key"))
+
+    def test_put_multi(self):
+        db = TestClient._ph.open("mydatabase")
+        keys = ['test_put_multi_1', 'test_put_multi_2', 'test_put_multi_3']
+        vals = ['value1', 'value2', 'value3']
+        db.put_multi(keys, vals)
+        self.assertEqual(db.get('test_put_multi_1'), 'value1')
+        self.assertEqual(db.get('test_put_multi_2'), 'value2')
+        self.assertEqual(db.get('test_put_multi_3'), 'value3')
+
+    def test_get_multi(self):
+        db = TestClient._ph.open("mydatabase")
+        keys = ['test_get_multi_1', 'test_get_multi_2', 'test_get_multi_3']
+        vals_in = ['value1', 'value2', 'value3']
+        db.put_multi(keys, vals_in)
+        vals_out = db.get_multi(keys)
+        self.assertEqual(vals_in, vals_out)
+
+    def test_length_multi(self):
+        db = TestClient._ph.open("mydatabase")
+        keys = ['test_length_multi_1', 'test_length_multi_2', 'test_length_multi_3']
+        vals = ['value1', 'value2AA', 'value3BBBBBB']
+        lengths = db.length_multi(keys)
+        self.assertEqual(len(vals), len(lengths))
+        for v,l in zip(vals, lengths):
+            self.assertEqual(len(v), l)
 
 if __name__ == '__main__':
     unittest.main()

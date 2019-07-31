@@ -75,6 +75,22 @@ static py11::object pysdskv_get(
     return py11::cast(value);
 }
 
+static py11::object pysdskv_length(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& key) 
+{
+    hg_size_t vsize;
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
+    Py_END_ALLOW_THREADS
+    if(ret != SDSKV_SUCCESS) {
+        return py11::none();
+    }
+    return py11::cast(vsize);
+}
+
 static py11::object pysdskv_put(
         pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
@@ -147,6 +163,7 @@ PYBIND11_MODULE(_pysdskvclient, m)
             return sdskv_provider_handle_release(ph); });
     m.def("open", &pysdskv_open);
     m.def("get", &pysdskv_get);
+    m.def("length", &pysdskv_length);
     m.def("put", &pysdskv_put);
     m.def("exists", &pysdskv_exists);
     m.def("erase", &pysdskv_erase);

@@ -44,12 +44,28 @@ class SDSKVDatabase():
     def put(self, key, value):
         _pysdskvclient.put(self._sdskv_ph._ph, self._db_id, key, value)
 
+    def put_multi(self, keys, values):
+        raise NotImplementedError('put_multi')
+
     def get(self, key):
         val = _pysdskvclient.get(self._sdskv_ph._ph, self._db_id, key)
         if(val is None):
             raise KeyError(key)
         else:
             return val
+
+    def get_multi(self, keys):
+        raise NotImplementedError('get_multi')
+
+    def length(self, key):
+        l = _pysdskvclient.length(self._sdskv_ph._ph, self._db_id, key)
+        if(l is None):
+            raise KeyError(key)
+        else:
+            return l
+
+    def length_multi(self, key):
+        raise NotImplementedError('length_multi')
 
     def exists(self, key):
         return _pysdskvclient.exists(self._sdskv_ph._ph, self._db_id, key)
