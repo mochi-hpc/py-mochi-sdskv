@@ -34,6 +34,11 @@ class TestClient(unittest.TestCase):
         db = TestClient._ph.open("mydatabase")
         self.assertEqual(db.get_id(), TestClient._db_id)
 
+    def test_list_databases(self):
+        dbs = TestClient._ph.databases
+        self.assertEqual(len(dbs), 1)
+        self.assertEqual(dbs[0].name, "mydatabase")
+
     def test_put(self):
         db = TestClient._ph.open("mydatabase")
         db.put("test_put_key", "test_put_value")
@@ -47,6 +52,14 @@ class TestClient(unittest.TestCase):
         with self.assertRaises(KeyError):
             val = db.get("test_get_unknown_key")
         db.erase("test_get_key")
+
+    def test_bracket(self):
+        db = TestClient._ph.open("mydatabase")
+        db['test_bracket'] = 'myvalue'
+        self.assertTrue(db.exists('test_bracket'))
+        self.assertEqual(db['test_bracket'], 'myvalue')
+        del db['test_bracket']
+        self.assertFalse(db.exists('test_bracket'))
         
     def test_exists(self):
         db = TestClient._ph.open("mydatabase")
@@ -170,6 +183,31 @@ class TestClient(unittest.TestCase):
         self.assertEqual(vals_out, ['val3', 'val4', 'val5'])
         for k in keys:
             db.erase(k)
+
+    def test_iterator_keys(self):
+        db = TestClient._ph.open("mydatabase")
+        keys = ['test_iter_1', 'test_iter_2', 'test_iter_3', 'test_iter_4', 'test_iter_5']
+        vals = ['val1', 'val2', 'val3', 'val4', 'val5']
+        db.put_multi(keys, vals)
+        for k_in, k_out in zip(keys, db.keys()):
+            self.assertEqual(k_in, k_out)
+        for k in keys:
+            db.erase(k)
+
+    def test_iterator_keyvals(self):
+        db = TestClient._ph.open("mydatabase")
+        keys = ['test_iter_1', 'test_iter_2', 'test_iter_3', 'test_iter_4', 'test_iter_5']
+        vals = ['val1', 'val2', 'val3', 'val4', 'val5']
+        kv_in = []
+        for k,v in zip(keys, vals):
+            kv_in.append((k,v))
+        db.put_multi(keys, vals)
+        for (k_in, val_in), (k_out, val_out) in zip(kv_in, db.items()):
+            self.assertEqual(k_in, k_out)
+            self.assertEqual(val_in, val_out)
+        for k in keys:
+            db.erase(k)
+
 
 if __name__ == '__main__':
     unittest.main()
