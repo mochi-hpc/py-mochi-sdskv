@@ -4,6 +4,7 @@
  * See COPYRIGHT in top-level directory.
  */
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -57,15 +58,17 @@ static sdskv_database_id_t pysdskv_open(
 static py11::object pysdskv_get(
         pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
-        const std::string& key) 
+        const std::string& key,
+        hg_size_t vsize) 
 {
-    hg_size_t vsize;
     int ret;
-    Py_BEGIN_ALLOW_THREADS
-    ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
-    Py_END_ALLOW_THREADS
-    if(ret != SDSKV_SUCCESS) {
-        return py11::none();
+    if(vsize == 0) {
+        Py_BEGIN_ALLOW_THREADS
+        ret = sdskv_length(ph, id, key.c_str(), key.size(), &vsize);
+        Py_END_ALLOW_THREADS
+        if(ret != SDSKV_SUCCESS) {
+            return py11::none();
+        }
     }
     std::string value(vsize, '\0');
     Py_BEGIN_ALLOW_THREADS
@@ -73,6 +76,47 @@ static py11::object pysdskv_get(
     Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return py11::none();
     return py11::cast(value);
+}
+
+static py11::object pysdskv_get_multi(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::vector<std::string>& keys,
+        std::vector<hg_size_t>& val_sizes) 
+{
+    std::vector<hg_size_t> vsizes(keys.size());
+    std::vector<const void*> keys_ptr(keys.size());
+    std::vector<hg_size_t> keys_size(keys.size());
+    for(unsigned i=0; i < keys.size(); i++) {
+        keys_ptr[i]  = keys[i].data();
+        keys_size[i] = keys[i].size();
+    }
+    int ret;
+    if(val_sizes[0] == 0) {
+        Py_BEGIN_ALLOW_THREADS
+        ret = sdskv_length_multi(ph, id, keys.size(),
+                keys_ptr.data(), keys_size.data(), val_sizes.data());
+        Py_END_ALLOW_THREADS
+        if(ret != SDSKV_SUCCESS) {
+            return py11::none();
+        }
+    }
+    std::vector<std::string> values(keys.size());
+    std::vector<void*> val_ptrs(keys.size());
+    for(unsigned i=0; i < keys.size(); i++) {
+        values[i].resize(val_sizes[i]);
+        val_ptrs[i] = const_cast<char*>(values[i].data());
+    }
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_get_multi(ph, id, keys.size(),
+            keys_ptr.data(), keys_size.data(),
+            val_ptrs.data(), val_sizes.data());
+    Py_END_ALLOW_THREADS
+    if(ret != SDSKV_SUCCESS) return py11::none();
+    for(unsigned i=0; i < keys.size(); i++) {
+        values[i].resize(val_sizes[i]);
+    }
+    return py11::cast(values);
 }
 
 static py11::object pysdskv_length(
@@ -91,6 +135,29 @@ static py11::object pysdskv_length(
     return py11::cast(vsize);
 }
 
+static py11::object pysdskv_length_multi(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::vector<std::string>& keys)
+{
+    std::vector<hg_size_t> vsizes(keys.size());
+    std::vector<hg_size_t> keys_size(keys.size());
+    std::vector<const void*> keys_ptrs(keys.size());
+    for(unsigned i=0; i<keys.size(); i++) {
+        keys_ptrs[i] = keys[i].data();
+        keys_size[i] = keys[i].size();
+    }
+    int ret;
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_length_multi(ph, id, keys.size(),
+            keys_ptrs.data(), keys_size.data(), vsizes.data());
+    Py_END_ALLOW_THREADS
+    if(ret != SDSKV_SUCCESS) {
+        return py11::none();
+    }
+    return py11::cast(vsizes);
+}
+
 static py11::object pysdskv_put(
         pysdskv_provider_handle_t ph,
         sdskv_database_id_t id,
@@ -100,6 +167,32 @@ static py11::object pysdskv_put(
     int ret;
     Py_BEGIN_ALLOW_THREADS
     ret = sdskv_put(ph, id, key.data(), key.size(), value.data(), value.size());
+    Py_END_ALLOW_THREADS
+    if(ret != SDSKV_SUCCESS) return py11::cast(false);
+    else return py11::cast(true);
+}
+
+static py11::object pysdskv_put_multi(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::vector<std::string>& keys,
+        const std::vector<std::string>& values) 
+{
+    int ret;
+    std::vector<const void*> keys_ptrs(keys.size());
+    std::vector<hg_size_t>   keys_size(keys.size());
+    std::vector<const void*> vals_ptrs(values.size());
+    std::vector<hg_size_t>   vals_size(values.size());
+    for(unsigned i=0; i < keys.size(); i++) {
+        keys_ptrs[i] = keys[i].data();
+        keys_size[i] = keys[i].size();
+        vals_ptrs[i] = values[i].data();
+        vals_size[i] = values[i].size();
+    }
+    Py_BEGIN_ALLOW_THREADS
+    ret = sdskv_put_multi(ph, id, keys.size(),
+            keys_ptrs.data(), keys_size.data(),
+            vals_ptrs.data(), vals_size.data());
     Py_END_ALLOW_THREADS
     if(ret != SDSKV_SUCCESS) return py11::cast(false);
     else return py11::cast(true);
@@ -133,6 +226,130 @@ static void pysdskv_erase(
     throw std::runtime_error(ss.str().c_str());
 }
 
+static std::vector<std::string> pysdskv_list_keys(
+        pysdskv_provider_handle_t ph,
+        sdskv_database_id_t id,
+        const std::string& start_key,
+        const std::string& prefix,
+        hg_size_t max_keys,
+        std::vector<hg_size_t>& key_sizes) {
+
+    int ret;
+    if(max_keys == 0)
+        return std::vector<std::string>();
+
+    std::vector<std::string> keys(max_keys);
+    std::vector<void*> keys_addr(max_keys, nullptr);
+
+    Py_BEGIN_ALLOW_THREADS
+    if(key_sizes.size() == 0) {
+        key_sizes.resize(max_keys,0);
+        ret = sdskv_list_keys_with_prefix(ph, id,
+                start_key.data(), start_key.size(),
+                prefix.data(), prefix.size(),
+                nullptr,
+                key_sizes.data(),
+                &max_keys);
+        if(ret != SDSKV_SUCCESS && ret != SDSKV_ERR_SIZE) {
+            throw std::runtime_error(std::string("sdskv_list_keys_with_prefix returned ")+std::to_string(ret));
+        }
+    }
+
+    for(unsigned i = 0; i < max_keys; i++) {
+        keys_addr[i] = const_cast<char*>(keys[i].data());
+        keys[i].resize(key_sizes[i]);
+    }
+
+    ret = sdskv_list_keys_with_prefix(ph, id,
+            start_key.data(), start_key.size(),
+            prefix.data(), prefix.size(),
+            keys_addr.data(),
+            key_sizes.data(),
+            &max_keys);
+    keys.resize(max_keys);
+    for(unsigned i = 0; i < max_keys; i++) {
+        keys[i].resize(key_sizes[i]);
+    }
+    Py_END_ALLOW_THREADS
+
+    if(ret != SDSKV_SUCCESS)
+        throw std::runtime_error(std::string("sdskv_list_keys_with_prefix returned ")+std::to_string(ret));
+
+    return keys;
+}
+
+static std::pair<
+        std::vector<std::string>,
+        std::vector<std::string>
+        > pysdskv_list_keyvals(
+            pysdskv_provider_handle_t ph,
+            sdskv_database_id_t id,
+            const std::string& start_key,
+            const std::string& prefix,
+            hg_size_t max_keys,
+            std::vector<hg_size_t>& key_sizes,
+            std::vector<hg_size_t>& val_sizes) {
+
+    int ret;
+    std::pair<std::vector<std::string>,std::vector<std::string>> result;
+    if(max_keys == 0)
+        return result;
+
+    result.first.resize(max_keys);
+    result.second.resize(max_keys);
+
+    std::vector<std::string>& keys = result.first;
+    std::vector<void*> keys_addr(max_keys, nullptr);
+    std::vector<std::string>& vals = result.second;
+    std::vector<void*> vals_addr(max_keys, nullptr);
+
+    Py_BEGIN_ALLOW_THREADS
+    if(key_sizes.size() == 0 || val_sizes.size() == 0) {
+        key_sizes.resize(max_keys,0);
+        val_sizes.resize(max_keys,0);
+        ret = sdskv_list_keyvals_with_prefix(ph, id,
+                start_key.data(), start_key.size(),
+                prefix.data(), prefix.size(),
+                nullptr,
+                key_sizes.data(),
+                nullptr,
+                val_sizes.data(),
+                &max_keys);
+        if(ret != SDSKV_SUCCESS && ret != SDSKV_ERR_SIZE) {
+            throw std::runtime_error(std::string("sdskv_list_keyvals_with_prefix returned ")+std::to_string(ret));
+        }
+    }
+
+    for(unsigned i = 0; i < max_keys; i++) {
+        keys[i].resize(key_sizes[i]);
+        keys_addr[i] = const_cast<char*>(keys[i].data());
+        vals[i].resize(val_sizes[i]);
+        vals_addr[i] = const_cast<char*>(vals[i].data());
+    }
+
+    ret = sdskv_list_keyvals_with_prefix(ph, id,
+            start_key.data(), start_key.size(),
+            prefix.data(), prefix.size(),
+            keys_addr.data(),
+            key_sizes.data(),
+            vals_addr.data(),
+            val_sizes.data(),
+            &max_keys);
+
+    keys.resize(max_keys);
+    vals.resize(max_keys);
+    for(unsigned i = 0; i < max_keys; i++) {
+        keys[i].resize(key_sizes[i]);
+        vals[i].resize(val_sizes[i]);
+    }
+    Py_END_ALLOW_THREADS
+
+    if(ret != SDSKV_SUCCESS)
+        throw std::runtime_error(std::string("sdskv_list_keys_with_prefix returned ")+std::to_string(ret));
+
+    return result;
+}
+
 static int pysdskv_migrate_database(
         pysdskv_provider_handle_t ph,
         sdskv_database_id_t source_id,
@@ -163,10 +380,15 @@ PYBIND11_MODULE(_pysdskvclient, m)
             return sdskv_provider_handle_release(ph); });
     m.def("open", &pysdskv_open);
     m.def("get", &pysdskv_get);
+    m.def("get_multi", &pysdskv_get_multi);
     m.def("length", &pysdskv_length);
+    m.def("length_multi", &pysdskv_length_multi);
     m.def("put", &pysdskv_put);
+    m.def("put_multi", &pysdskv_put_multi);
     m.def("exists", &pysdskv_exists);
     m.def("erase", &pysdskv_erase);
+    m.def("list_keys", &pysdskv_list_keys);
+    m.def("list_keyvals", &pysdskv_list_keyvals);
     m.def("migrate_database", &pysdskv_migrate_database);
     m.def("shutdown_service", [](pysdskv_client_t clt, pyhg_addr_t addr) {
             return sdskv_shutdown_service(clt, addr); });

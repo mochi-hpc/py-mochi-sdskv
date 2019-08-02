@@ -42,20 +42,26 @@ class SDSKVDatabase():
         self._db_id = db_id
 
     def put(self, key, value):
-        _pysdskvclient.put(self._sdskv_ph._ph, self._db_id, key, value)
+        return _pysdskvclient.put(self._sdskv_ph._ph, self._db_id, key, value)
 
     def put_multi(self, keys, values):
-        raise NotImplementedError('put_multi')
+        if(len(keys) != len(values)):
+            raise RuntimeError("Number of keys and values do not match")
+        return _pysdskvclient.put_multi(self._sdskv_ph._ph, self._db_id, keys, values)
 
-    def get(self, key):
-        val = _pysdskvclient.get(self._sdskv_ph._ph, self._db_id, key)
+    def get(self, key, value_size=0):
+        val = _pysdskvclient.get(self._sdskv_ph._ph, self._db_id, key, value_size)
         if(val is None):
             raise KeyError(key)
         else:
             return val
 
-    def get_multi(self, keys):
-        raise NotImplementedError('get_multi')
+    def get_multi(self, keys, value_sizes=0):
+        if(len(keys) == 0):
+            return []
+        if(isinstance(value_sizes, int)):
+            value_sizes = [ value_sizes ] * len(keys)
+        return _pysdskvclient.get_multi(self._sdskv_ph._ph, self._db_id, keys, value_sizes)
 
     def length(self, key):
         l = _pysdskvclient.length(self._sdskv_ph._ph, self._db_id, key)
@@ -64,14 +70,28 @@ class SDSKVDatabase():
         else:
             return l
 
-    def length_multi(self, key):
-        raise NotImplementedError('length_multi')
+    def length_multi(self, keys):
+        return _pysdskvclient.length_multi(self._sdskv_ph._ph, self._db_id, keys)
 
     def exists(self, key):
         return _pysdskvclient.exists(self._sdskv_ph._ph, self._db_id, key)
 
     def erase(self, key):
         _pysdskvclient.erase(self._sdskv_ph._ph, self._db_id, key)
+
+
+    def list_keys(self, after='', num_keys=1, prefix='', key_sizes=[]):
+        if(isinstance(key_sizes, int)):
+            key_sizes = [ key_sizes ] * num_keys
+        return _pysdskvclient.list_keys(self._sdskv_ph._ph, self._db_id, after, prefix, num_keys, key_sizes)
+
+    def list_keyvals(self, after='', num_keys=1, prefix='', key_sizes=[], val_sizes=[]):
+        if(isinstance(key_sizes, int)):
+            key_sizes = [ key_sizes ] * num_keys
+        if(isinstance(val_sizes, int)):
+            val_sizes = [ val_sizes ] * num_keys
+        return _pysdskvclient.list_keyvals(self._sdskv_ph._ph, self._db_id, after, prefix, num_keys, key_sizes, val_sizes)
+
 
     def migrate(self, dest_addr_str, dest_provider_id, dest_root, remove_source=False):
         return _pysdskvclient.migrate_database(self._sdskv_ph._ph, self._db, dest_addr, dest_provider_id, dest_root, remove_source)
