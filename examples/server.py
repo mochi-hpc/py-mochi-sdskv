@@ -1,10 +1,12 @@
 # (C) 2018 The University of Chicago
 # See COPYRIGHT in top-level directory.
+import sys
+sys.path.append('build/lib.linux-x86_64-3.7')
 from pymargo.core import Engine
 import pysdskv.server
 from pysdskv.server import SDSKVProvider
 
-engine = Engine('tcp')
+engine = Engine('ofi+tcp')
 engine.enable_remote_shutdown()
 
 provider_id = 42
