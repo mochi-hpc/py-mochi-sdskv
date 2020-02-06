@@ -297,8 +297,8 @@ static std::vector<std::string> pysdskv_list_keys(
     }
 
     for(unsigned i = 0; i < max_keys; i++) {
-        keys_addr[i] = const_cast<char*>(keys[i].data());
         keys[i].resize(key_sizes[i]);
+        keys_addr[i] = const_cast<char*>(keys[i].data());
     }
 
     ret = sdskv_list_keys_with_prefix(ph, id,
