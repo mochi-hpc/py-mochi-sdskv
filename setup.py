@@ -7,10 +7,6 @@ import os
 import os.path
 import sys
 
-def get_pybind11_include():
-    path = os.path.dirname(pybind11.__file__)
-    return '/'.join(path.split('/')[0:-4] + ['include'])
-
 (opt,) = get_config_vars('OPT')
 os.environ['OPT'] = " ".join(
 		    flag for flag in opt.split() if flag != '-Wstrict-prototypes'
@@ -22,7 +18,7 @@ server_library_dirs = pk['library_dirs']
 server_library_dirs = pk['library_dirs']
 server_include_dirs = pk['include_dirs']
 server_include_dirs.append(".")
-server_include_dirs.append(get_pybind11_include())
+server_include_dirs.append(pybind11.get_include())
 
 pysdskv_server_module = Extension('_pysdskvserver', ["pysdskv/src/server.cpp"],
 		           libraries=server_libraries,
@@ -37,7 +33,7 @@ client_library_dirs = pk['library_dirs']
 client_library_dirs = pk['library_dirs']
 client_include_dirs = pk['include_dirs']
 client_include_dirs.append(".")
-client_include_dirs.append(get_pybind11_include())
+client_include_dirs.append(pybind11.get_include())
 
 pysdskv_client_module = Extension('_pysdskvclient', ["pysdskv/src/client.cpp"],
 		           libraries=client_libraries,
