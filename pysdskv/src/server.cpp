@@ -1,6 +1,6 @@
 /*
  * (C) 2018 The University of Chicago
- * 
+ *
  * See COPYRIGHT in top-level directory.
  */
 #include <pybind11/pybind11.h>
@@ -24,7 +24,7 @@ typedef py11::capsule pysdskv_provider_t;
 
 static pysdskv_provider_t pysdskv_provider_register(pymargo_instance_id mid, uint8_t provider_id) {
     sdskv_provider_t provider;
-    int ret = sdskv_provider_register(mid, provider_id, SDSKV_ABT_POOL_DEFAULT, &provider);
+    int ret = sdskv_provider_register(mid, provider_id, NULL, &provider);
     if(ret != 0) return py11::none();
     else return SDSKVPR2CAPSULE(provider);
 }
