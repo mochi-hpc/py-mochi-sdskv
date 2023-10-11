@@ -18,9 +18,9 @@ typedef py11::capsule pymargo_instance_id;
 typedef py11::capsule pyhg_addr_t;
 typedef py11::capsule pysdskv_provider_t;
 
-#define MID2CAPSULE(__mid)    py11::capsule((void*)(__mid),  "margo_instance_id", nullptr)
-#define ADDR2CAPSULE(__addr)  py11::capsule((void*)(__addr), "hg_addr_t", nullptr)
-#define SDSKVPR2CAPSULE(__pr) py11::capsule((void*)(__pr),   "pysdskv_provider_t", nullptr)
+#define MID2CAPSULE(__mid)    py11::capsule((void*)(__mid),  "margo_instance_id")
+#define ADDR2CAPSULE(__addr)  py11::capsule((void*)(__addr), "hg_addr_t")
+#define SDSKVPR2CAPSULE(__pr) py11::capsule((void*)(__pr),   "pysdskv_provider_t")
 
 static pysdskv_provider_t pysdskv_provider_register(pymargo_instance_id mid, uint8_t provider_id) {
     sdskv_provider_t provider;
